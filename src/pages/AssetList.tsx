@@ -7,18 +7,25 @@ export default function AssetList() {
   const [assets, setAssets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [categoryFilter, setCategoryFilter] = useState("ALL");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [user, setUser] = useState<any>(null);
   const [formData, setFormData] = useState({
     code: "",
     name: "",
     category: "Komputer",
     location: "",
     status: "AVAILABLE",
-    condition: "GOOD"
+    condition: "GOOD",
+    price: "",
+    imageUrl: ""
   });
 
   useEffect(() => {
     fetchAssets();
+    const savedUser = localStorage.getItem("user");
+    if (savedUser) setUser(JSON.parse(savedUser));
   }, []);
 
   const fetchAssets = () => {
@@ -28,25 +35,63 @@ export default function AssetList() {
       .finally(() => setLoading(false));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData({ ...formData, imageUrl: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Apakah Anda yakin ingin menghapus aset ini?")) return;
     try {
-      await apiFetch("/assets", {
-        method: "POST",
-        body: JSON.stringify(formData)
-      });
-      setIsModalOpen(false);
+      await apiFetch(`/assets/${id}`, { method: "DELETE" });
       fetchAssets();
     } catch (err: any) {
       alert(err.message);
     }
   };
 
-  const filteredAssets = assets.filter(a => 
-    a.name.toLowerCase().includes(search.toLowerCase()) || 
-    a.code.toLowerCase().includes(search.toLowerCase()) ||
-    a.location.toLowerCase().includes(search.toLowerCase())
-  );
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await apiFetch("/assets", {
+        method: "POST",
+        body: JSON.stringify({
+          ...formData,
+          price: parseFloat(formData.price) || 0
+        })
+      });
+      setIsModalOpen(false);
+      setFormData({
+        code: "",
+        name: "",
+        category: "Komputer",
+        location: "",
+        status: "AVAILABLE",
+        condition: "GOOD",
+        price: "",
+        imageUrl: ""
+      });
+      fetchAssets();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const filteredAssets = assets.filter(a => {
+    const matchesSearch = a.name.toLowerCase().includes(search.toLowerCase()) || 
+                         a.code.toLowerCase().includes(search.toLowerCase()) ||
+                         a.location.toLowerCase().includes(search.toLowerCase());
+    const matchesStatus = statusFilter === "ALL" || a.status === statusFilter;
+    const matchesCategory = categoryFilter === "ALL" || a.category === categoryFilter;
+    
+    return matchesSearch && matchesStatus && matchesCategory;
+  });
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -86,10 +131,34 @@ export default function AssetList() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <button className="px-4 py-2 border border-slate-200 rounded-lg flex items-center gap-2 text-slate-600 hover:bg-slate-50 transition-colors">
-          <Filter size={18} />
-          Filter
-        </button>
+        <div className="flex gap-2">
+          <select 
+            className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 bg-white outline-none focus:ring-2 focus:ring-emerald-500"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="ALL">Semua Status</option>
+            <option value="AVAILABLE">Tersedia</option>
+            <option value="IN_USE">Digunakan</option>
+            <option value="LOANED">Dipinjam</option>
+            <option value="REPAIRING">Perbaikan</option>
+            <option value="BROKEN">Rusak</option>
+          </select>
+          <select 
+            className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 bg-white outline-none focus:ring-2 focus:ring-emerald-500"
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+          >
+            <option value="ALL">Semua Kategori</option>
+            <option value="Komputer">Komputer</option>
+            <option value="Laptop">Laptop</option>
+            <option value="Server">Server</option>
+            <option value="Router">Router</option>
+            <option value="Switch">Switch</option>
+            <option value="Access Point">Access Point</option>
+            <option value="Printer">Printer</option>
+          </select>
+        </div>
       </div>
 
       {/* Table */}
@@ -137,10 +206,18 @@ export default function AssetList() {
                       {asset.status.replace("_", " ")}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-6 py-4 text-right flex justify-end gap-2">
                     <Link to={`/assets/${asset.id}`} className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-900 transition-colors">
-                      <ChevronRight size={18} />
+                      <Eye size={18} />
                     </Link>
+                    {user?.role === "ADMIN" && (
+                      <button 
+                        onClick={() => handleDelete(asset.id)}
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -206,6 +283,32 @@ export default function AssetList() {
                   onChange={e => setFormData({...formData, location: e.target.value})}
                 />
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Harga Perolehan (Rp)</label>
+                  <input
+                    type="number"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500"
+                    placeholder="0"
+                    value={formData.price}
+                    onChange={e => setFormData({...formData, price: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Gambar Aset</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
+                    onChange={handleImageChange}
+                  />
+                </div>
+              </div>
+              {formData.imageUrl && (
+                <div className="mt-2">
+                  <img src={formData.imageUrl} alt="Preview" className="h-20 w-20 object-cover rounded-lg border border-slate-200" />
+                </div>
+              )}
               <div className="flex justify-end gap-3 pt-4">
                 <button 
                   type="button"

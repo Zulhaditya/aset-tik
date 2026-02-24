@@ -16,32 +16,64 @@ model User {
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
   mutations Mutation[]
+  loans     Loan[]
   logs      AuditLog[]
 }
 
 model Asset {
-  id           String     @id @default(cuid())
-  code         String     @unique // Asset Tag / Inventory Code
-  name         String
-  category     String     // Computer, Laptop, Server, Router, etc.
-  brand        String?
-  model        String?
-  serialNumber String?    @unique
-  status       String     @default("AVAILABLE") // AVAILABLE, IN_USE, REPAIRING, BROKEN, DISPOSED
-  condition    String     @default("GOOD")      // GOOD, FAIR, POOR
-  location     String
-  purchaseDate DateTime?
-  price        Float?
-  description  String?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  mutations    Mutation[]
+  id              String        @id @default(cuid())
+  code            String        @unique // Asset Tag / Inventory Code
+  name            String
+  category        String // Computer, Laptop, Server, Router, etc.
+  brand           String?
+  model           String?
+  serialNumber    String?       @unique
+  status          String        @default("AVAILABLE") // AVAILABLE, IN_USE, REPAIRING, BROKEN, DISPOSED, LOANED
+  condition       String        @default("GOOD") // GOOD, FAIR, POOR
+  location        String
+  purchaseDate    DateTime?
+  nextServiceDate DateTime?
+  price           Float?
+  imageUrl        String?
+  description     String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  mutations       Mutation[]
+  maintenances    Maintenance[]
+  loans           Loan[]
+}
+
+model Maintenance {
+  id          String   @id @default(cuid())
+  assetId     String
+  asset       Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  date        DateTime @default(now())
+  type        String // ROUTINE, REPAIR
+  cost        Float?
+  description String?
+  performedBy String?
+  createdAt   DateTime @default(now())
+}
+
+model Loan {
+  id           String    @id @default(cuid())
+  assetId      String
+  asset        Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User      @relation(fields: [userId], references: [id])
+  borrowerName String
+  borrowerDept String
+  loanDate     DateTime  @default(now())
+  dueDate      DateTime?
+  returnDate   DateTime?
+  status       String    @default("ACTIVE") // ACTIVE, RETURNED
+  notes        String?
 }
 
 model Mutation {
   id           String   @id @default(cuid())
   assetId      String
-  asset        Asset    @relation(fields: [assetId], references: [id])
+  asset        Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
   fromLocation String
   toLocation   String
   date         DateTime @default(now())

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { apiFetch } from "../lib/api";
-import { Box, CheckCircle2, AlertCircle, History, User, Activity } from "lucide-react";
+import { Box, CheckCircle2, AlertCircle, History, User, Activity, MoveHorizontal } from "lucide-react";
 import { motion } from "motion/react";
 
 export default function Dashboard() {
@@ -23,7 +23,7 @@ export default function Dashboard() {
     { name: "Total Aset", value: stats.totalAssets, icon: Box, color: "bg-blue-500" },
     { name: "Tersedia", value: stats.assetsByStatus.find((s: any) => s.status === "AVAILABLE")?._count || 0, icon: CheckCircle2, color: "bg-emerald-500" },
     { name: "Sedang Digunakan", value: stats.assetsByStatus.find((s: any) => s.status === "IN_USE")?._count || 0, icon: Activity, color: "bg-amber-500" },
-    { name: "Perlu Perbaikan", value: stats.assetsByStatus.find((s: any) => s.status === "REPAIRING")?._count || 0, icon: AlertCircle, color: "bg-red-500" },
+    { name: "Dipinjam", value: stats.assetsByStatus.find((s: any) => s.status === "LOANED")?._count || 0, icon: MoveHorizontal, color: "bg-indigo-500" },
   ];
 
   return (
@@ -32,6 +32,29 @@ export default function Dashboard() {
         <h1 className="text-2xl font-bold text-slate-900">Dashboard Inventori</h1>
         <p className="text-slate-500">Ringkasan aset TIK Dinas Kominfo hari ini.</p>
       </div>
+
+      {stats.reminders && stats.reminders.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6">
+          <h2 className="text-amber-800 font-bold flex items-center gap-2 mb-4">
+            <AlertCircle size={20} />
+            Pengingat Jadwal Servis
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {stats.reminders.map((r: any) => (
+              <div key={r.id} className="bg-white p-4 rounded-xl border border-amber-100 shadow-sm flex justify-between items-center">
+                <div>
+                  <p className="font-bold text-slate-900 text-sm">{r.name}</p>
+                  <p className="text-xs text-slate-500 font-mono">{r.code}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Jadwal</p>
+                  <p className="text-sm font-semibold text-slate-700">{new Date(r.nextServiceDate).toLocaleDateString("id-ID")}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {cards.map((card, i) => (
