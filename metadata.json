@@ -1,0 +1,5 @@
+{
+  "name": "SIM-ASET TIK Kominfo",
+  "description": "Sistem Inventarisasi Aset TIK Dinas Kominfo dengan fitur pelacakan status, histori mutasi, dan audit trail.",
+  "requestFramePermissions": []
+}

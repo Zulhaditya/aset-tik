@@ -1,0 +1,62 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String     @id @default(cuid())
+  username  String     @unique
+  password  String
+  name      String
+  role      String     @default("OPERATOR") // ADMIN, OPERATOR, VIEWER
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  mutations Mutation[]
+  logs      AuditLog[]
+}
+
+model Asset {
+  id           String     @id @default(cuid())
+  code         String     @unique // Asset Tag / Inventory Code
+  name         String
+  category     String     // Computer, Laptop, Server, Router, etc.
+  brand        String?
+  model        String?
+  serialNumber String?    @unique
+  status       String     @default("AVAILABLE") // AVAILABLE, IN_USE, REPAIRING, BROKEN, DISPOSED
+  condition    String     @default("GOOD")      // GOOD, FAIR, POOR
+  location     String
+  purchaseDate DateTime?
+  price        Float?
+  description  String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  mutations    Mutation[]
+}
+
+model Mutation {
+  id           String   @id @default(cuid())
+  assetId      String
+  asset        Asset    @relation(fields: [assetId], references: [id])
+  fromLocation String
+  toLocation   String
+  date         DateTime @default(now())
+  description  String?
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String   // CREATE, UPDATE, DELETE, LOGIN, etc.
+  entity    String   // Asset, User, Mutation
+  entityId  String?
+  details   String?  // JSON string of changes
+  timestamp DateTime @default(now())
+}
